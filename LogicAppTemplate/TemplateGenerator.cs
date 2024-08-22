@@ -1214,6 +1214,8 @@ namespace LogicAppTemplate
             connectionTemplate.properties.displayName = $"[parameters('{AddTemplateParameter(connectionName + "_displayName", "string", (string)connectionInstance["properties"]["displayName"])}')]";
             //parameterValueSet
             connectionTemplate.properties.parameterValueSet = connectionInstance["properties"]?["parameterValueSet"];
+            //parameterValueType
+            connectionTemplate.properties.parameterValueType = connectionInstance["properties"]?["parameterValueType"]?.Value<string>();
 
             JObject connectionParameters = new JObject();
 
@@ -1258,6 +1260,10 @@ namespace LogicAppTemplate
                             connectionParameters.Add(parameter.Name, $"[listKeys(resourceId(parameters('{AddTemplateParameter(connectionName + "_resourceGroupName", "string", instanceResourceId.ResourceGroupName)}'),'Microsoft.Storage/storageAccounts', parameters('{connectionName}_accountName')), '2018-02-01').keys[0].value]");
                         }
                         else if (OnlyParameterizeConnections == false && concatedId.EndsWith("/azuretables')]") && connectionInstance["properties"]["parameterValueSet"]?["name"].Value<string>() == "managedIdentityAuth")
+                        {
+                            //ignore
+                        }
+                        else if (OnlyParameterizeConnections == false && concatedId.EndsWith("/azureeventgrid')]") && connectionInstance["properties"]["parameterValueType"].Value<string>() == "Alternative")
                         {
                             //ignore
                         }

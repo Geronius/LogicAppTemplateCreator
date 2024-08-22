@@ -31,6 +31,10 @@ namespace LogicAppTemplate.Models
         //only fill parameterValueSet when source not empty, otherwise saved credentials will be lost.
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public dynamic parameterValueSet { get; set; }
+
+        //only fill parameterValueType when source not empty
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public string parameterValueType { get; set; }
     }
 
     public class ConnectionTemplate
