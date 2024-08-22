@@ -300,7 +300,7 @@ namespace LogicAppTemplate
                     //replace identity value with parsed one for userAssignedIdentities
                     if (connectionProperties.ContainsKey("authentication"))
                     {
-                        if (connectionProperties["authentication"]?["identity"]?.Value<string>()?.Contains("userAssignedIdentities") == true)
+                        if (userAssignedIdentities != null && connectionProperties["authentication"]?["identity"]?.Value<string>()?.Contains("userAssignedIdentities") == true)
                         {
                             connectionProperties["authentication"] = JObject.FromObject(new
                             {
