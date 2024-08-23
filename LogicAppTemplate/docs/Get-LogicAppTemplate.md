@@ -15,7 +15,7 @@ Generate LogicApp ARM template
 ```
 Get-LogicAppTemplate -LogicApp <String> -ResourceGroup <String> -SubscriptionId <String> [-TenantName <String>]
  [-Token <String>] [-ClaimsDump <String>] [-DebugOutPutFolder <String>] [-DiagnosticSettings]
- [-IncludeInitializeVariable] [-FixedFunctionAppName] [-GenerateHttpTriggerUrlOutput] [-StripPassword] [-DisabledState] [<CommonParameters>]
+ [-IncludeInitializeVariable] [-FixedFunctionAppName] [-FixedEventgridName] [-GenerateHttpTriggerUrlOutput] [-StripPassword] [-DisabledState] [<CommonParameters>]
 ```
 
 ## DESCRIPTION

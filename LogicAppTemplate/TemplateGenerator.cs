@@ -55,6 +55,7 @@ namespace LogicAppTemplate
         public bool DiagnosticSettings { get; set; }
         public bool IncludeInitializeVariable { get; set; }
         public bool FixedFunctionAppName { get; set; }
+        public bool FixedEventgridName { get; set; }
         public bool GenerateHttpTriggerUrlOutput { get; set; }
         public bool ForceManagedIdentity { get; set; }
         public bool DisableConnectionsOutput { get; set; }
@@ -955,10 +956,10 @@ namespace LogicAppTemplate
 
                                     //replace for gui
                                     trigger.Value["inputs"]["path"] = "[concat('" + path.Replace($"'{ri.SubscriptionId}'", $"subscription().subscriptionId") + "')]";
-
+                                    
                                     ri.SubscriptionId = "',subscription().subscriptionId,'";
-                                    ri.ResourceGroupName = "',parameters('" + AddTemplateParameter(ri.ResourceName + "_ResourceGroup", "string", ri.ResourceGroupName) + "'),'";
-                                    ri.ResourceName = "',parameters('" + AddTemplateParameter(ri.ResourceName + "_Name", "string", ri.ResourceName) + "')";
+                                    ri.ResourceGroupName = "',parameters('" + AddTemplateParameter((FixedEventgridName ? "Eventgrid" : ri.ResourceName) + "_ResourceGroup", "string", ri.ResourceGroupName) + "'),'";
+                                    ri.ResourceName = "',parameters('" + AddTemplateParameter((FixedEventgridName ? "Eventgrid" : ri.ResourceName) + "_Name", "string", ri.ResourceName) + "')";
                                     //replace for topic
                                     trigger.Value["inputs"]["body"]["properties"]["topic"] = "[concat('" + ri.ToString() + ")]";
                                     break;
