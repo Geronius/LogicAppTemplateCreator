@@ -48,6 +48,9 @@ namespace LogicAppTemplate
         [Parameter(Mandatory = false, HelpMessage = "If supplied, the functionApp gets a static name")]
         public SwitchParameter FixedFunctionAppName;
 
+        [Parameter(Mandatory = false, HelpMessage = "If supplied, the event grid gets a static name")]
+        public SwitchParameter FixedEventgridName;
+
         [Parameter(Mandatory = false, HelpMessage = "If supplied, generate an output variable with the trigger url.")]
         public SwitchParameter GenerateHttpTriggerUrlOutput;
 
@@ -124,6 +127,7 @@ namespace LogicAppTemplate
                 IncludeInitializeVariable = this.IncludeInitializeVariable,
                 ForceManagedIdentity = this.ForceManagedIdentity,
                 FixedFunctionAppName = this.FixedFunctionAppName,
+                FixedEventgridName = this.FixedEventgridName,
                 DisableConnectionsOutput = this.DisableConnectionGeneration,
                 DisableTagParameters = this.DisableTagParameters,
                 IncludeEvaluatedRecurrence = this.IncludeEvaluatedRecurrence,

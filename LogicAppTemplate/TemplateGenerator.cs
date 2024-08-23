@@ -55,6 +55,7 @@ namespace LogicAppTemplate
         public bool DiagnosticSettings { get; set; }
         public bool IncludeInitializeVariable { get; set; }
         public bool FixedFunctionAppName { get; set; }
+        public bool FixedEventgridName { get; set; }
         public bool GenerateHttpTriggerUrlOutput { get; set; }
         public bool ForceManagedIdentity { get; set; }
         public bool DisableConnectionsOutput { get; set; }
@@ -300,7 +301,7 @@ namespace LogicAppTemplate
                     //replace identity value with parsed one for userAssignedIdentities
                     if (connectionProperties.ContainsKey("authentication"))
                     {
-                        if (connectionProperties["authentication"]?["identity"]?.Value<string>()?.Contains("userAssignedIdentities") == true)
+                        if (userAssignedIdentities != null && connectionProperties["authentication"]?["identity"]?.Value<string>()?.Contains("userAssignedIdentities") == true)
                         {
                             connectionProperties["authentication"] = JObject.FromObject(new
                             {
@@ -677,7 +678,15 @@ namespace LogicAppTemplate
                 }
                 else if (type == "function")
                 {
-                    var curr = ((JObject)definition["actions"][action.Name]["inputs"]["function"]).Value<string>("id");
+                    
+                    // this is to support functionApps with swagger definitions (v2)
+                    var functionNodeName = "function";
+                    if (definition["actions"][action.Name]["inputs"]["functionApp"] != null)
+                    {
+                        functionNodeName = "functionApp";
+                    }
+                    
+                    var curr = ((JObject)definition["actions"][action.Name]["inputs"][functionNodeName]).Value<string>("id");
                     var faid = new AzureResourceId(curr);
 
                     var resourcegroupValue = LogicAppResourceGroup == faid.ResourceGroupName ? "[resourceGroup().name]" : faid.ResourceGroupName;
@@ -685,17 +694,37 @@ namespace LogicAppTemplate
 
                     faid.SubscriptionId = "',subscription().subscriptionId,'";
                     faid.ResourceGroupName = "',parameters('" + AddTemplateParameter((FixedFunctionAppName ? "FunctionApp-" : action.Name + "-") + "ResourceGroup", "string", resourcegroupValue) + "'),'";
-                    faid.ReplaceValueAfter("sites", "',parameters('" + AddTemplateParameter((FixedFunctionAppName ? "" : action.Name + "-") + "FunctionApp", "string", faid.ValueAfter("sites")) + "'),'");
 
-                    if (DisableFunctionNameParameters)
+                    if (functionNodeName == "function")
                     {
-                        faid.ReplaceValueAfter("functions", faid.ValueAfter("functions") + "'");
+                        faid.ReplaceValueAfter("sites", "',parameters('" + AddTemplateParameter((FixedFunctionAppName ? "" : action.Name + "-") + "FunctionApp", "string", faid.ValueAfter("sites")) + "'),'");
+
+                        if (DisableFunctionNameParameters)
+                        {
+                            faid.ReplaceValueAfter("functions", faid.ValueAfter("functions") + "'");
+                        }
+                        else
+                        {
+                            faid.ReplaceValueAfter("functions",
+                                $"',parameters('{AddTemplateParameter((FixedFunctionAppName ? "" : action.Name + "-") + "FunctionName", "string", faid.ValueAfter("functions"))}')");
+                        }
                     }
-                    else
+                    // this is to support functionApps with swagger definitions (v2)
+                    else if (functionNodeName == "functionApp")
                     {
-                        faid.ReplaceValueAfter("functions", "',parameters('" + AddTemplateParameter((FixedFunctionAppName ? "" : action.Name + "-") + "FunctionName", "string", faid.ValueAfter("functions")) + "')");
+                        var functionAppNameParam = AddTemplateParameter($"{(FixedFunctionAppName ? "" : action.Name + "-")}FunctionApp", "string", faid.ValueAfter("sites"));
+                        faid.ReplaceValueAfter("sites", $"',parameters('{functionAppNameParam}')");
+
+                        //get hostname from functionAppUri
+                        var functionAppUri = new Uri(((JObject)definition["actions"][action.Name]["inputs"]).Value<string>("uri"));
+                        var functionAppHostname = functionAppUri.DnsSafeHost.Split('.');
+
+                        definition["actions"][action.Name]["inputs"]["uri"] =
+                            $"[concat('https://', tolower(parameters('{functionAppNameParam}')), '.{string.Join(".", functionAppHostname.Skip(1))}{functionAppUri.PathAndQuery}')]";
                     }
-                    definition["actions"][action.Name]["inputs"]["function"]["id"] = "[concat('" + faid.ToString() + ")]";
+
+                    definition["actions"][action.Name]["inputs"][functionNodeName]["id"] = $"[concat('{faid})]";
+
                 }
                 else
                 {
@@ -927,10 +956,10 @@ namespace LogicAppTemplate
 
                                     //replace for gui
                                     trigger.Value["inputs"]["path"] = "[concat('" + path.Replace($"'{ri.SubscriptionId}'", $"subscription().subscriptionId") + "')]";
-
+                                    
                                     ri.SubscriptionId = "',subscription().subscriptionId,'";
-                                    ri.ResourceGroupName = "',parameters('" + AddTemplateParameter(ri.ResourceName + "_ResourceGroup", "string", ri.ResourceGroupName) + "'),'";
-                                    ri.ResourceName = "',parameters('" + AddTemplateParameter(ri.ResourceName + "_Name", "string", ri.ResourceName) + "')";
+                                    ri.ResourceGroupName = "',parameters('" + AddTemplateParameter((FixedEventgridName ? "Eventgrid" : ri.ResourceName) + "_ResourceGroup", "string", ri.ResourceGroupName) + "'),'";
+                                    ri.ResourceName = "',parameters('" + AddTemplateParameter((FixedEventgridName ? "Eventgrid" : ri.ResourceName) + "_Name", "string", ri.ResourceName) + "')";
                                     //replace for topic
                                     trigger.Value["inputs"]["body"]["properties"]["topic"] = "[concat('" + ri.ToString() + ")]";
                                     break;
@@ -1186,6 +1215,8 @@ namespace LogicAppTemplate
             connectionTemplate.properties.displayName = $"[parameters('{AddTemplateParameter(connectionName + "_displayName", "string", (string)connectionInstance["properties"]["displayName"])}')]";
             //parameterValueSet
             connectionTemplate.properties.parameterValueSet = connectionInstance["properties"]?["parameterValueSet"];
+            //parameterValueType
+            connectionTemplate.properties.parameterValueType = connectionInstance["properties"]?["parameterValueType"]?.Value<string>();
 
             JObject connectionParameters = new JObject();
 
@@ -1230,6 +1261,10 @@ namespace LogicAppTemplate
                             connectionParameters.Add(parameter.Name, $"[listKeys(resourceId(parameters('{AddTemplateParameter(connectionName + "_resourceGroupName", "string", instanceResourceId.ResourceGroupName)}'),'Microsoft.Storage/storageAccounts', parameters('{connectionName}_accountName')), '2018-02-01').keys[0].value]");
                         }
                         else if (OnlyParameterizeConnections == false && concatedId.EndsWith("/azuretables')]") && connectionInstance["properties"]["parameterValueSet"]?["name"].Value<string>() == "managedIdentityAuth")
+                        {
+                            //ignore
+                        }
+                        else if (OnlyParameterizeConnections == false && concatedId.EndsWith("/azureeventgrid')]") && connectionInstance["properties"]["parameterValueType"].Value<string>() == "Alternative")
                         {
                             //ignore
                         }
