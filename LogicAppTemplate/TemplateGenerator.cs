@@ -423,7 +423,6 @@ namespace LogicAppTemplate
 
         private JToken handleActions(JObject definition, JObject parameters)
         {
-
             foreach (JProperty action in definition["actions"])
             {
                 var type = action.Value.SelectToken("type").Value<string>().ToLower();
@@ -435,8 +434,8 @@ namespace LogicAppTemplate
                     var wid = new AzureResourceId(curr);
                     string resourcegroupValue = LogicAppResourceGroup == wid.ResourceGroupName ? "[resourceGroup().name]" : wid.ResourceGroupName;
                     string resourcegroupParameterName = AddTemplateParameter(action.Name + "-ResourceGroup", "string", resourcegroupValue);
-                    string wokflowParameterName = AddTemplateParameter(action.Name + "-LogicAppName", "string", wid.ResourceName);
-                    string workflowid = $"[concat('/subscriptions/',subscription().subscriptionId,'/resourceGroups/',parameters('{resourcegroupParameterName}'),'/providers/Microsoft.Logic/workflows/',parameters('{wokflowParameterName}'))]";
+                    string workflowParameterName = AddTemplateParameter(action.Name + "-LogicAppName", "string", wid.ResourceName);
+                    string workflowid = $"[concat('/subscriptions/',subscription().subscriptionId,'/resourceGroups/',parameters('{resourcegroupParameterName}'),'/providers/Microsoft.Logic/workflows/',parameters('{workflowParameterName}'))]";
                     definition["actions"][action.Name]["inputs"]["host"]["workflow"]["id"] = workflowid;
 
                 }
@@ -492,8 +491,7 @@ namespace LogicAppTemplate
                 {
                     var apiId = ((JObject)definition["actions"][action.Name]["inputs"]["api"]).Value<string>("id");
                     var aaid = new AzureResourceId(apiId);
-
-
+                    
                     aaid.SubscriptionId = "',subscription().subscriptionId,'";
                     aaid.ResourceGroupName = "', parameters('" + AddTemplateParameter("apimResourceGroup", "string", aaid.ResourceGroupName) + "'),'";
                     aaid.ReplaceValueAfter("service", "', parameters('" + AddTemplateParameter("apimInstanceName", "string", aaid.ValueAfter("service")) + "'),'");
@@ -678,7 +676,6 @@ namespace LogicAppTemplate
                 }
                 else if (type == "function")
                 {
-                    
                     // this is to support functionApps with swagger definitions (v2)
                     var functionNodeName = "function";
                     if (definition["actions"][action.Name]["inputs"]["functionApp"] != null)

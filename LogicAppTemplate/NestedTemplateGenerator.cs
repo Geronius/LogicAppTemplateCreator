@@ -33,9 +33,12 @@ namespace LogicAppTemplate
 
         [Parameter(Mandatory = false, HelpMessage = "Add Parameterlink")]
         public bool AddParameterlink = true;
-
+        
         [Parameter(Mandatory = false, HelpMessage = "Optional dependsOn")]
         public string DependsOn = "";
+        
+        [Parameter(Mandatory = false, HelpMessage = "If supplied, the these parameters are not being added to the master template.\n\nAdd the names like this: @(\"logicAppName\", \"servicebusSubscriptionName\", \"topic_name\")")]
+        public string[] ParameterNamesToSkip;
 
         private static string NestedTemplateResourceUri = "[concat(parameters('repoBaseUrl'), '/{0}/{0}.json', parameters('_artifactsLocationSasToken'))]";
         private static string NestedTemplateParameterUri = "[concat(parameters('repoBaseUrl'), '/{0}/{0}.parameters.json', parameters('_artifactsLocationSasToken'))]";
@@ -109,6 +112,11 @@ namespace LogicAppTemplate
 
                         foreach (JProperty parameter in parameters.Properties())
                         {
+
+                            if (ParameterNamesToSkip != null && ParameterNamesToSkip.Contains(parameter.Name))
+                            {
+                                continue;
+                            }
 
                             JProperty param = parameter.DeepClone() as JProperty;
 
