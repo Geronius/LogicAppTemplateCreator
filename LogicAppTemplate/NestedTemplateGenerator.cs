@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Management.Automation;
 using System.Runtime.Caching;
+using System.Text.RegularExpressions;
 
 namespace LogicAppTemplate
 {
@@ -37,7 +38,7 @@ namespace LogicAppTemplate
         [Parameter(Mandatory = false, HelpMessage = "Optional dependsOn")]
         public string DependsOn = "";
         
-        [Parameter(Mandatory = false, HelpMessage = "If supplied, the these parameters are not being added to the master template.\n\nAdd the names like this: @(\"logicAppName\", \"servicebusSubscriptionName\", \"topic_name\")")]
+        [Parameter(Mandatory = false, HelpMessage = "If supplied, the these parameters are not being added to the master template. Regex pattern are also supported\n\nAdd the names like this: @(\"logicAppName\", \"servicebusSubscriptionName\\\\d?\", \"topic_name\\\\d?\")")]
         public string[] ParameterNamesToSkip;
 
         private static string NestedTemplateResourceUri = "[concat(parameters('repoBaseUrl'), '/{0}/{0}.json', parameters('_artifactsLocationSasToken'))]";
@@ -112,8 +113,8 @@ namespace LogicAppTemplate
 
                         foreach (JProperty parameter in parameters.Properties())
                         {
-
-                            if (ParameterNamesToSkip != null && ParameterNamesToSkip.Contains(parameter.Name))
+                            // Skip parameters that are not needed in the master template, regex pattern are also supported
+                            if (ParameterNamesToSkip != null && ParameterNamesToSkip.Any(pattern => Regex.IsMatch(parameter.Name, pattern)))
                             {
                                 continue;
                             }
