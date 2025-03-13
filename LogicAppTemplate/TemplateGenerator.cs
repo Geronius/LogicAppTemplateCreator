@@ -181,9 +181,11 @@ namespace LogicAppTemplate
             }
             else if (ForceAccessControl && accessControl == null || accessControl?.ToString() == "{}")
             {
-                //Check for triggerKind eventgrid. In that case we don't want to add whitelisting, because we will get handshake errors 
+                //Check for triggerKind eventgrid or triggerType ApiConnectionWebhook. In that case we don't want to add whitelisting, because we will get handshake errors 
                 var triggerKind = ((JProperty)workflowTemplateReference["properties"]?["definition"]?["triggers"]?.FirstOrDefault())?.Value["kind"]?.Value<string>();
-                if (triggerKind != "EventGrid")
+                var triggerType = ((JProperty)workflowTemplateReference["properties"]?["definition"]?["triggers"]?.FirstOrDefault())?.Value["type"]?.Value<string>();
+                
+                if (triggerKind != "EventGrid" && triggerType != "ApiConnectionWebhook")
                 {
                     workflowTemplateReference["properties"]["accessControl"] = JObject.Parse(@"{""triggers"":{""allowedCallerIpAddresses"":[]},""actions"":{""allowedCallerIpAddresses"":[]}}");
                 }
