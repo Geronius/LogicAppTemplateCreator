@@ -1015,8 +1015,8 @@ namespace LogicAppTemplate
                                 var query = jToken as JProperty;
                                 var queryValue = query?.Value?.Value<string>();
 
-                                //[ at the beginning has to be escaped with a extra [, but only when not starting with [[
-                                if (query.HasValues && queryValue.StartsWith("[") && !queryValue.StartsWith("[["))
+                                //[ at the beginning has to be escaped with an extra [.
+                                if (query.HasValues && queryValue.StartsWith("["))
                                 {
                                     definition["triggers"][trigger.Name]["inputs"]["queries"][query.Name] = queryValue = "[" + queryValue;
                                 }
