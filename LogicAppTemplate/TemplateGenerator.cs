@@ -1016,10 +1016,18 @@ namespace LogicAppTemplate
                                 var query = jToken as JProperty;
                                 var queryValue = query?.Value?.Value<string>();
 
-                                //[ at the beginning has to be escaped with a extra [
+                                //[ at the beginning has to be escaped with an extra [.
                                 if (query.HasValues && queryValue.StartsWith("["))
                                 {
-                                    definition["triggers"][trigger.Name]["inputs"]["queries"][query.Name] = queryValue = "[" + queryValue;
+                                    //todo: for some reason the source is sometimes already escaped with an [. It looks random,
+                                    //I can't find out when this is the case and when not. Maybe later on make a better fix than this one
+                                    var countOpen = queryValue.Count(x => x == '[');
+                                    var countClose = queryValue.Count(x => x == ']');
+
+                                    if(!(countOpen > countClose))
+                                    {
+                                        definition["triggers"][trigger.Name]["inputs"]["queries"][query.Name] = "[" + queryValue;
+                                    }
                                 }
                             }
                             catch (FormatException ex)
