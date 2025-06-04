@@ -32,7 +32,7 @@ namespace LogicAppTemplate.Models
         
         public RoleAssignmentsProperties Properties { get; set; }
 
-        public JObject GenerateJObject(Func<string, string, string, string> addTemplateParameter, string resourceGroupParameterName)
+        public JObject GenerateJObject(Func<string, string, string, string> addTemplateParameter)
         {
             var resourceId = new AzureResourceId(Properties.Scope);
 
@@ -40,7 +40,7 @@ namespace LogicAppTemplate.Models
 
             var retVal = new RoleAssignmentsTemplate
             {
-                Name = $"[guid(parameters('{resourceGroupParameterName}'), parameters('logicAppName'), '{new AzureResourceId(Properties.RoleDefinitionId).ResourceName}')]",                    
+                Name = $"[guid(resourceGroup().name, parameters('logicAppName'), '{new AzureResourceId(Properties.RoleDefinitionId).ResourceName}')]",                    
                 Scope = $"[concat('/{resourceId.Provider.Item1}/{resourceId.Provider.Item2}/', parameters('{roleAssignmentsResourceName}'))]",
                 Properties = new RoleAssignmentsProperties
                 {

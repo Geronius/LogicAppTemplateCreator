@@ -181,13 +181,14 @@ namespace LogicAppTemplate
             }
             else if (ForceAccessControl && accessControl == null || accessControl?.ToString() == "{}")
             {
-                //Check for triggerKind eventgrid. In that case we don't want to add whitelisting, because we will get handshake errors 
+                //Check for triggerKind eventgrid or triggerType ApiConnectionWebhook. In that case we don't want to add whitelisting, because we will get handshake errors 
                 var triggerKind = ((JProperty)workflowTemplateReference["properties"]?["definition"]?["triggers"]?.FirstOrDefault())?.Value["kind"]?.Value<string>();
-                if (triggerKind != "EventGrid")
+                var triggerType = ((JProperty)workflowTemplateReference["properties"]?["definition"]?["triggers"]?.FirstOrDefault())?.Value["type"]?.Value<string>();
+
+                if (triggerKind != "EventGrid" && triggerType != "ApiConnectionWebhook")
                 {
                     workflowTemplateReference["properties"]["accessControl"] = JObject.Parse(@"{""triggers"":{""allowedCallerIpAddresses"":[]},""actions"":{""allowedCallerIpAddresses"":[]}}");
                 }
-
             }
 
             // Diagnostic Settings
@@ -273,7 +274,7 @@ namespace LogicAppTemplate
 
                         foreach (var roleAssignmentTemplate in roleByScope)
                         {
-                            deploymentTemplate.AddResource(roleAssignmentTemplate.GenerateJObject(AddTemplateParameter, roleAssignmentsResourceGroupName));
+                            deploymentTemplate.AddResource(roleAssignmentTemplate.GenerateJObject(AddTemplateParameter));
                         }
 
                         template.resources.Add(deploymentTemplate.ToJObject());
@@ -423,7 +424,6 @@ namespace LogicAppTemplate
 
         private JToken handleActions(JObject definition, JObject parameters)
         {
-
             foreach (JProperty action in definition["actions"])
             {
                 var type = action.Value.SelectToken("type").Value<string>().ToLower();
@@ -435,8 +435,8 @@ namespace LogicAppTemplate
                     var wid = new AzureResourceId(curr);
                     string resourcegroupValue = LogicAppResourceGroup == wid.ResourceGroupName ? "[resourceGroup().name]" : wid.ResourceGroupName;
                     string resourcegroupParameterName = AddTemplateParameter(action.Name + "-ResourceGroup", "string", resourcegroupValue);
-                    string wokflowParameterName = AddTemplateParameter(action.Name + "-LogicAppName", "string", wid.ResourceName);
-                    string workflowid = $"[concat('/subscriptions/',subscription().subscriptionId,'/resourceGroups/',parameters('{resourcegroupParameterName}'),'/providers/Microsoft.Logic/workflows/',parameters('{wokflowParameterName}'))]";
+                    string workflowParameterName = AddTemplateParameter(action.Name + "-LogicAppName", "string", wid.ResourceName);
+                    string workflowid = $"[concat('/subscriptions/',subscription().subscriptionId,'/resourceGroups/',parameters('{resourcegroupParameterName}'),'/providers/Microsoft.Logic/workflows/',parameters('{workflowParameterName}'))]";
                     definition["actions"][action.Name]["inputs"]["host"]["workflow"]["id"] = workflowid;
 
                 }
@@ -492,8 +492,7 @@ namespace LogicAppTemplate
                 {
                     var apiId = ((JObject)definition["actions"][action.Name]["inputs"]["api"]).Value<string>("id");
                     var aaid = new AzureResourceId(apiId);
-
-
+                    
                     aaid.SubscriptionId = "',subscription().subscriptionId,'";
                     aaid.ResourceGroupName = "', parameters('" + AddTemplateParameter("apimResourceGroup", "string", aaid.ResourceGroupName) + "'),'";
                     aaid.ReplaceValueAfter("service", "', parameters('" + AddTemplateParameter("apimInstanceName", "string", aaid.ValueAfter("service")) + "'),'");
@@ -678,7 +677,6 @@ namespace LogicAppTemplate
                 }
                 else if (type == "function")
                 {
-                    
                     // this is to support functionApps with swagger definitions (v2)
                     var functionNodeName = "function";
                     if (definition["actions"][action.Name]["inputs"]["functionApp"] != null)
@@ -1016,10 +1014,18 @@ namespace LogicAppTemplate
                                 var query = jToken as JProperty;
                                 var queryValue = query?.Value?.Value<string>();
 
-                                //[ at the beginning has to be escaped with a extra [
+                                //[ at the beginning has to be escaped with an extra [.
                                 if (query.HasValues && queryValue.StartsWith("["))
                                 {
-                                    definition["triggers"][trigger.Name]["inputs"]["queries"][query.Name] = queryValue = "[" + queryValue;
+                                    //todo: for some reason the source is sometimes already escaped with an [. It looks random,
+                                    //I can't find out when this is the case and when not. Maybe later on make a better fix than this one
+                                    var countOpen = queryValue.Count(x => x == '[');
+                                    var countClose = queryValue.Count(x => x == ']');
+
+                                    if(!(countOpen > countClose))
+                                    {
+                                        definition["triggers"][trigger.Name]["inputs"]["queries"][query.Name] = "[" + queryValue;
+                                    }
                                 }
                             }
                             catch (FormatException ex)
